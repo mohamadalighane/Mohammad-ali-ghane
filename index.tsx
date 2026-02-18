@@ -44,7 +44,7 @@ const translations: Record<Language, Translation> = {
     nav: { about: 'About', projects: 'Ventures', vision: 'Vision', skills: 'Stack', contact: 'Connect' },
     hero: { greeting: "Hi, I'm", name: "Mohammadali Ghaneh", tag: "Building the Next Era of AI Products.", cta: "Explore Ventures" },
     about: { 
-      title: "The Architect", 
+      title: "Mohammadali ghane", 
       content: "A 15-year-old developer obsessed with high-quality digital experiences. I don't just write code; I build scalable ecosystems. My focus lies at the intersection of Artificial Intelligence, advanced Python development, and psychological UI design." 
     },
     projects: {
@@ -81,7 +81,7 @@ const translations: Record<Language, Translation> = {
     nav: { about: 'درباره', projects: 'پروژه‌ها', vision: 'چشم‌انداز', skills: 'مهارت‌ها', contact: 'ارتباط' },
     hero: { greeting: "من", name: "محمدعلی قانع", tag: "در حال ساخت نسل بعدی محصولات هوش مصنوعی هستم.", cta: "مشاهده پروژه‌ها" },
     about: { 
-      title: "معمار دیجیتال", 
+      title: "محمد علی قانع", 
       content: "توسعه‌دهنده‌ای ۱۵ ساله که مجذوب تجربه‌های دیجیتال با کیفیت بالا است. من فقط کد نمی‌نویسم؛ من اکوسیستم‌های مقیاس‌پذیر می‌سازم. تمرکز من بر تلاقی هوش مصنوعی، پایتون پیشرفته و طراحی رابط کاربری روان‌شناختی است." 
     },
     projects: {
