@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { motion as m, AnimatePresence } from 'framer-motion';
 import { 
@@ -19,7 +18,10 @@ import {
   Layout,
   MessageSquare,
   Menu,
-  X
+  X,
+  Send,
+  Copy,
+  Check
 } from 'lucide-react';
 
 // --- Fix: Shadow the motion object with an 'any' type to resolve property inference errors ---
@@ -28,23 +30,31 @@ const motion = m as any;
 // --- Types ---
 type Language = 'en' | 'fa';
 
+interface Prompt {
+  id: string;
+  author: string;
+  content: string;
+  timestamp: number;
+}
+
 interface Translation {
-  nav: { about: string; projects: string; vision: string; skills: string; contact: string };
+  nav: { about: string; projects: string; vision: string; skills: string; contact: string; lab: string };
   hero: { greeting: string; name: string; tag: string; cta: string };
   about: { title: string; content: string };
   projects: { title: string; subtitle: string; items: any[] };
   vision: { title: string; quote: string; author: string; content: string };
   skills: { title: string; categories: any[] };
   contact: { title: string; content: string; button: string };
+  lab: { title: string; subtitle: string; placeholder: string; submit: string; feed: string };
 }
 
 // --- Translations ---
 const translations: Record<Language, Translation> = {
   en: {
-    nav: { about: 'About', projects: 'Ventures', vision: 'Vision', skills: 'Stack', contact: 'Connect' },
+    nav: { about: 'About', projects: 'Ventures', vision: 'Vision', skills: 'Stack', contact: 'Connect', lab: 'Laboratory' },
     hero: { greeting: "Hi, I'm", name: "Mohammadali Ghaneh", tag: "Building the Next Era of AI Products.", cta: "Explore Ventures" },
     about: { 
-      title: "Mohammadali ghane", 
+      title: "The Architect", 
       content: "A 15-year-old developer obsessed with high-quality digital experiences. I don't just write code; I build scalable ecosystems. My focus lies at the intersection of Artificial Intelligence, advanced Python development, and psychological UI design." 
     },
     projects: {
@@ -75,13 +85,20 @@ const translations: Record<Language, Translation> = {
       title: "Initialize Connection",
       content: "Let's build something world-class together.",
       button: "Send Transmission"
+    },
+    lab: {
+      title: "Prompt Laboratory",
+      subtitle: "Engineer a prompt and deploy it to the public marketplace feed.",
+      placeholder: "Enter your system instructions or AI prompt here...",
+      submit: "Deploy to Feed",
+      feed: "Live Marketplace Feed"
     }
   },
   fa: {
-    nav: { about: 'درباره', projects: 'پروژه‌ها', vision: 'چشم‌انداز', skills: 'مهارت‌ها', contact: 'ارتباط' },
+    nav: { about: 'درباره', projects: 'پروژه‌ها', vision: 'چشم‌انداز', skills: 'مهارت‌ها', contact: 'ارتباط', lab: 'آزمایشگاه' },
     hero: { greeting: "من", name: "محمدعلی قانع", tag: "در حال ساخت نسل بعدی محصولات هوش مصنوعی هستم.", cta: "مشاهده پروژه‌ها" },
     about: { 
-      title: "محمد علی قانع", 
+      title: "معمار دیجیتال", 
       content: "توسعه‌دهنده‌ای ۱۵ ساله که مجذوب تجربه‌های دیجیتال با کیفیت بالا است. من فقط کد نمی‌نویسم؛ من اکوسیستم‌های مقیاس‌پذیر می‌سازم. تمرکز من بر تلاقی هوش مصنوعی، پایتون پیشرفته و طراحی رابط کاربری روان‌شناختی است." 
     },
     projects: {
@@ -112,6 +129,13 @@ const translations: Record<Language, Translation> = {
       title: "برقراری ارتباط",
       content: "بیایید با هم چیزی در سطح جهانی بسازیم.",
       button: "ارسال پیام"
+    },
+    lab: {
+      title: "آزمایشگاه پرامپت",
+      subtitle: "یک پرامپت طراحی کنید و آن را در فید عمومی مارکت‌پلیس منتشر کنید.",
+      placeholder: "دستورالعمل سیستم یا پرامپت خود را اینجا وارد کنید...",
+      submit: "انتشار در فید",
+      feed: "فید زنده مارکت‌پلیس"
     }
   }
 };
@@ -124,6 +148,7 @@ const Navbar = ({ lang, setLang, t }: { lang: Language; setLang: (l: Language) =
   const navLinks = [
     { href: "#about", label: t.nav.about },
     { href: "#projects", label: t.nav.projects },
+    { href: "#lab", label: t.nav.lab },
     { href: "#skills", label: t.nav.skills },
     { href: "#contact", label: t.nav.contact }
   ];
@@ -164,7 +189,6 @@ const Navbar = ({ lang, setLang, t }: { lang: Language; setLang: (l: Language) =
         </button>
       </div>
 
-      {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -190,10 +214,136 @@ const Navbar = ({ lang, setLang, t }: { lang: Language; setLang: (l: Language) =
   );
 };
 
+const Laboratory = ({ t, lang }: { t: Translation; lang: Language }) => {
+  const [promptText, setPromptText] = useState("");
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Simulate Database Loading
+  useEffect(() => {
+    const saved = localStorage.getItem('ghaneh_prompts');
+    if (saved) {
+      setPrompts(JSON.parse(saved));
+    } else {
+      // Default placeholder prompts
+      const initial = [
+        { id: 'tok_01', author: 'System', content: 'Act as a senior software architect specializing in micro-interactions...', timestamp: Date.now() - 3600000 },
+        { id: 'tok_02', author: 'Developer', content: 'Generate a highly optimized Python script for processing large-scale neural network weights.', timestamp: Date.now() - 7200000 }
+      ];
+      setPrompts(initial);
+      localStorage.setItem('ghaneh_prompts', JSON.stringify(initial));
+    }
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!promptText.trim()) return;
+
+    const newPrompt: Prompt = {
+      id: `tok_${Math.random().toString(36).substr(2, 4)}`,
+      author: 'Guest_User',
+      content: promptText,
+      timestamp: Date.now()
+    };
+
+    const updated = [newPrompt, ...prompts];
+    setPrompts(updated);
+    localStorage.setItem('ghaneh_prompts', JSON.stringify(updated));
+    setPromptText("");
+  };
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  return (
+    <section id="lab" className="py-24 px-6 md:px-12 bg-zinc-950/20">
+      <div className="max-w-6xl mx-auto">
+        <div className={`mb-16 ${lang === 'fa' ? 'text-right' : 'text-left'}`}>
+          <h2 className="text-sm font-mono uppercase tracking-[0.4em] text-cyan-400 mb-4">{t.nav.lab}</h2>
+          <h3 className="text-4xl md:text-6xl font-black mb-6 tracking-tighter leading-tight">{t.lab.title}</h3>
+          <p className="text-white/50 text-base md:text-xl max-w-2xl">{t.lab.subtitle}</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          {/* Submission Panel */}
+          <div className="lg:col-span-5">
+            <form onSubmit={handleSubmit} className="glass p-8 rounded-3xl sticky top-24">
+              <div className="mb-6">
+                <label className={`block text-xs font-bold uppercase tracking-widest text-white/40 mb-3 ${lang === 'fa' ? 'text-right' : ''}`}>
+                  {lang === 'en' ? 'Prompt Engineering' : 'مهندسی پرامپت'}
+                </label>
+                <textarea 
+                  value={promptText}
+                  onChange={(e) => setPromptText(e.target.value)}
+                  placeholder={t.lab.placeholder}
+                  className={`w-full h-48 bg-black/50 border border-white/10 rounded-xl p-4 text-sm font-mono text-white/80 focus:border-cyan-400 focus:outline-none transition-all resize-none ${lang === 'fa' ? 'text-right' : ''}`}
+                />
+              </div>
+              <button 
+                type="submit"
+                className="w-full flex items-center justify-center gap-3 bg-white text-black font-bold py-4 rounded-xl uppercase tracking-widest text-xs hover:shadow-[0_0_20px_rgba(0,245,255,0.3)] transition-all hover:bg-cyan-400"
+              >
+                <Send size={16} />
+                {t.lab.submit}
+              </button>
+            </form>
+          </div>
+
+          {/* Marketplace Feed */}
+          <div className="lg:col-span-7">
+            <h4 className={`text-xs font-bold uppercase tracking-widest text-white/40 mb-8 flex items-center gap-2 ${lang === 'fa' ? 'flex-row-reverse' : ''}`}>
+              <Zap size={14} className="text-yellow-400" />
+              {t.lab.feed}
+            </h4>
+            <div className="space-y-6">
+              <AnimatePresence initial={false}>
+                {prompts.map((p) => (
+                  <motion.div 
+                    key={p.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="glass p-6 rounded-2xl relative group overflow-hidden"
+                  >
+                    <div className={`flex justify-between items-start mb-4 ${lang === 'fa' ? 'flex-row-reverse' : ''}`}>
+                      <div className={`flex items-center gap-3 ${lang === 'fa' ? 'flex-row-reverse' : ''}`}>
+                        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+                          <BrainCircuit size={16} className="text-cyan-400" />
+                        </div>
+                        <span className="text-[10px] font-mono text-white/30">{p.id}</span>
+                      </div>
+                      <button 
+                        onClick={() => copyToClipboard(p.content, p.id)}
+                        className="text-white/20 hover:text-white transition-colors"
+                      >
+                        {copiedId === p.id ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
+                      </button>
+                    </div>
+                    <p className={`text-sm text-white/70 leading-relaxed ${lang === 'fa' ? 'text-right' : ''}`}>
+                      {p.content}
+                    </p>
+                    <div className={`mt-4 pt-4 border-t border-white/5 flex justify-between items-center ${lang === 'fa' ? 'flex-row-reverse' : ''}`}>
+                      <span className="text-[9px] font-bold tracking-widest text-white/20 uppercase">{p.author}</span>
+                      <span className="text-[9px] font-mono text-white/20">{new Date(p.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                    {/* Hover light effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/5 to-cyan-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 const Hero = ({ t, lang }: { t: Translation; lang: Language }) => {
   return (
     <section className="relative min-h-[90vh] md:min-h-screen flex flex-col justify-center items-center text-center px-6 pt-20 overflow-hidden">
-      {/* Background Glows */}
       <div className="absolute top-1/4 left-1/4 w-[250px] md:w-[400px] h-[250px] md:h-[400px] bg-cyan-900/10 blur-[80px] md:blur-[150px] -z-10 rounded-full animate-pulse"></div>
       <div className="absolute bottom-1/4 right-1/4 w-[250px] md:w-[400px] h-[250px] md:h-[400px] bg-purple-900/10 blur-[80px] md:blur-[150px] -z-10 rounded-full"></div>
       
@@ -382,10 +532,12 @@ const App = () => {
   }, [lang]);
 
   return (
-    <div className={`selection:bg-cyan-500 selection:text-black ${lang === 'fa' ? 'font-vazir' : 'font-inter'} antialiased`}>
+    <div className={`selection:bg-cyan-500 selection:text-black ${lang === 'fa' ? 'font-vazir' : 'font-inter'} antialiased bg-black text-white`}>
       <Navbar lang={lang} setLang={setLang} t={t} />
       
       <main>
+        <Hero t={t} lang={lang} />
+        
         <section id="about" className="py-20 md:py-32 px-6 md:px-12">
           <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-center">
             <motion.div 
@@ -402,7 +554,6 @@ const App = () => {
             </motion.div>
             <div className="relative order-2 md:order-2 px-4 md:px-0">
               <div className="aspect-square glass rounded-3xl overflow-hidden relative group max-w-[500px] mx-auto">
-                {/* Visual representation of AI/Core */}
                 <div className="absolute inset-0 flex items-center justify-center scale-75 sm:scale-100">
                   <motion.div 
                     animate={{ rotate: 360 }}
@@ -418,7 +569,6 @@ const App = () => {
                     </motion.div>
                   </motion.div>
                 </div>
-                {/* Ambient light */}
                 <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-cyan-500/10 to-transparent"></div>
               </div>
               <div className={`absolute -bottom-4 -right-4 md:-bottom-6 md:-right-6 glass p-4 md:p-6 rounded-2xl ${lang === 'fa' ? 'right-auto -left-4 md:-left-6' : ''}`}>
@@ -455,6 +605,8 @@ const App = () => {
           </div>
         </section>
 
+        <Laboratory t={t} lang={lang} />
+
         <VisionSection t={t} lang={lang} />
         
         <SkillsSection t={t} lang={lang} />
@@ -462,7 +614,6 @@ const App = () => {
       
       <Footer t={t} lang={lang} />
       
-      {/* Visual background noise/texture */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-[9999] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
     </div>
   );
